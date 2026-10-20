@@ -41,6 +41,7 @@ const categories: CashCategory[] = [
 ]
 
 const paymentMethods: PaymentMethod[] = ['QR', 'Efectivo']
+const activeSection = ref<'cash' | 'inventory'>('cash')
 const status = ref<CashStatus>('opening')
 const date = ref(localDateValue())
 const openingBalances = reactive<Record<CategoryId, number>>({
@@ -59,7 +60,6 @@ const movementAmount = ref<number | null>(null)
 const movementConcept = ref('')
 const errorMessage = ref('')
 const downloadError = ref('')
-
 function localDateValue() {
   const now = new Date()
   const month = String(now.getMonth() + 1).padStart(2, '0')
@@ -350,6 +350,26 @@ async function downloadReport() {
           </span>
           <span class="font-sans text-[17px] font-extrabold tracking-[-.75px] text-[#222637]">arqueo</span>
         </a>
+        <nav class="flex items-center gap-1 rounded-[9px] bg-[#f5f4fa] p-1" aria-label="Secciones principales">
+          <button
+            type="button"
+            class="min-h-8 cursor-pointer rounded-[7px] border-0 px-3 text-[10px] font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b4a8ff] max-[520px]:px-2 max-[520px]:text-[9px]"
+            :class="activeSection === 'cash' ? 'bg-white text-[#5c4bc0] shadow-sm' : 'bg-transparent text-[#777b8b] hover:text-[#393c4e]'"
+            :aria-current="activeSection === 'cash' ? 'page' : undefined"
+            @click="activeSection = 'cash'"
+          >
+            Arqueo
+          </button>
+          <button
+            type="button"
+            class="min-h-8 cursor-pointer rounded-[7px] border-0 px-3 text-[10px] font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b4a8ff] max-[520px]:px-2 max-[520px]:text-[9px]"
+            :class="activeSection === 'inventory' ? 'bg-white text-[#5c4bc0] shadow-sm' : 'bg-transparent text-[#777b8b] hover:text-[#393c4e]'"
+            :aria-current="activeSection === 'inventory' ? 'page' : undefined"
+            @click="activeSection = 'inventory'"
+          >
+            Inventario
+          </button>
+        </nav>
         <div class="flex items-center gap-[9px] max-[520px]:gap-[5px]">
           <span class="inline-flex items-center gap-[7px] text-[10px] capitalize text-[#73788a] max-[520px]:hidden">
             <svg class="size-[15px] text-[#9b9fb0]" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5" stroke="currentColor" stroke-width="1.7" /><path d="M7.5 3.5v3M16.5 3.5v3M3.5 9.5h17" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
@@ -370,7 +390,7 @@ async function downloadReport() {
         </div>
       </header>
 
-      <div class="mx-auto w-[min(1120px,91%)] py-[38px] max-[780px]:w-[92%] max-[780px]:pt-7 min-[1500px]:pt-12 print:hidden">
+      <div v-show="activeSection === 'cash'" class="mx-auto w-[min(1120px,91%)] py-[38px] max-[780px]:w-[92%] max-[780px]:pt-7 min-[1500px]:pt-12 print:hidden">
         <section class="mb-[25px] flex items-end justify-between gap-[18px] max-[520px]:items-start">
           <div>
             <div class="flex items-center gap-2 text-[9px] font-bold tracking-[1.05px] text-[#9296a7]"><span class="inline-block h-0.5 w-[17px] rounded-sm bg-[#8875e5]"></span> CONTROL DE CAJA</div>
@@ -631,7 +651,9 @@ async function downloadReport() {
 
       </div>
 
-      <section v-if="status === 'closed'" class="hidden p-0 font-sans text-[#252637] print:block" aria-label="Reporte de arqueo">
+      <InventoryPanel v-show="activeSection === 'inventory'" />
+
+      <section v-if="activeSection === 'cash' && status === 'closed'" class="hidden p-0 font-sans text-[#252637] print:block" aria-label="Reporte de arqueo">
         <div class="flex items-center justify-between border-b-2 border-[#7661dc] pb-[13px] text-[10px] font-bold tracking-[.7px] text-[#76798a]">
           <div class="text-lg font-extrabold tracking-[-.5px] text-[#292c3d]">arqueo</div>
           <span>REPORTE DE ARQUEO DIARIO</span>
