@@ -21,7 +21,7 @@ Crear una aplicación web pequeña, completamente en el frontend, para abrir, co
    - Permitir volver al registro de movimientos antes de confirmar el cierre.
 4. **Reporte**
    - Mostrar un resumen por método de pago con cantidad de movimientos, entradas, salidas y neto.
-   - Generar un PDF descargable con fecha, saldos iniciales, totales de entradas y salidas, saldos esperados, importes contados, diferencias, resumen por método de pago y detalle de movimientos.
+   - Generar un PDF descargable en formato vertical, con ingresos y egresos en secciones separadas, concepto, método de pago, fecha y hora por movimiento, y sus totales.
    - Crear el PDF como Blob en el navegador y descargarlo directamente al dispositivo.
 5. **Privacidad**
    - Mantener el estado solo en memoria durante la sesión de la página.
