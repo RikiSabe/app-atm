@@ -23,7 +23,10 @@ Crear una aplicación web pequeña, completamente en el frontend, para abrir, co
    - Mostrar un resumen por método de pago con cantidad de movimientos, entradas, salidas y neto.
    - Generar un PDF descargable en formato vertical, con ingresos y egresos en secciones separadas, concepto, método de pago, fecha y hora por movimiento, y sus totales.
    - Crear el PDF como Blob en el navegador y descargarlo directamente al dispositivo.
-5. **Privacidad**
+5. **Inventario**
+   - Administrar artículos con nombre, cantidad y precio unitario.
+   - Permitir agregar, editar y eliminar artículos, y mostrar el valor total del inventario.
+6. **Privacidad**
    - Mantener el estado solo en memoria durante la sesión de la página.
    - No usar base de datos, backend, `localStorage` ni `sessionStorage`.
    - Advertir que recargar o cerrar la página elimina los datos.
@@ -41,4 +44,5 @@ Crear una aplicación web pequeña, completamente en el frontend, para abrir, co
 - Las entradas aumentan y las salidas disminuyen correctamente el saldo esperado.
 - El cierre solicita importes contados y calcula diferencias positivas, negativas y cero.
 - Se puede descargar un PDF con el detalle del arqueo cerrado.
+- Se pueden agregar, editar y eliminar artículos del inventario durante la sesión.
 - No se persisten datos al recargar la aplicación ni se transmiten a un backend.
