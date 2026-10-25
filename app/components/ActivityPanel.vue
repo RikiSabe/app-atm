@@ -22,6 +22,7 @@ const props = defineProps<{
   movementPaymentMethod: PaymentMethod
   movementAmount: number | null
   movementConcept: string
+  keepMovementContext: boolean
   errorMessage: string
 }>()
 
@@ -31,6 +32,7 @@ const emit = defineEmits<{
   'update:movementPaymentMethod': [value: PaymentMethod]
   'update:movementAmount': [value: number | null]
   'update:movementConcept': [value: string]
+  'update:keepMovementContext': [value: boolean]
   addMovement: []
   removeMovement: [id: number]
 }>()
@@ -65,6 +67,19 @@ const movementConceptModel = computed({
           <div class="flex items-center gap-2 text-[9px] font-bold tracking-[1.05px] text-[#9296a7]"><span class="inline-grid size-[19px] place-items-center rounded-md bg-[#f0edff] text-[9px] tracking-normal text-[#725fd2]">02</span> MOVIMIENTOS DEL DÍA</div>
           <h2 class="mt-2 text-[15px] font-bold tracking-[-.3px] text-[#282b3b]">Registra un movimiento</h2>
         </div>
+        <button
+          class="inline-flex min-h-[32px] flex-none cursor-pointer items-center justify-center rounded-md border px-2 text-[9px] font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b4a8ff] focus-visible:outline-offset-2"
+          :class="keepMovementContext ? 'border-[#b8e4d1] bg-[#eaf7f1] text-[#21835f]' : 'border-[#e8eaf0] bg-white text-[#777b8b] hover:bg-[#f8f7fc]'"
+          type="button"
+          :aria-pressed="keepMovementContext"
+          title="Conservar categoría, tipo y concepto después de agregar un movimiento"
+          @click="$emit('update:keepMovementContext', !keepMovementContext)"
+        >
+          <svg v-if="keepMovementContext" class="size-[13px]" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="m5 12 4 4L19 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          Mantener contexto
+        </button>
       </div>
       <form class="mt-[17px] grid grid-cols-[1fr_.8fr_1fr_.85fr_1.3fr_auto] items-end gap-2 max-[1100px]:grid-cols-3 max-[520px]:grid-cols-2" @submit.prevent="$emit('addMovement')">
         <label class="min-w-0 max-[1100px]:col-span-1">
