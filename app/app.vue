@@ -29,8 +29,11 @@ const movementType = ref<'entrada' | 'salida'>('entrada')
 const movementPaymentMethod = ref<PaymentMethod>('Efectivo')
 const movementAmount = ref<number | null>(null)
 const movementConcept = ref('')
+const keepMovementContext = ref(false)
 const errorMessage = ref('')
 const downloadError = ref('')
+const toastMessage = ref('')
+let toastTimeout: ReturnType<typeof setTimeout> | undefined
 
 const todayLabel = computed(() =>
   new Date(`${date.value}T12:00:00`).toLocaleDateString('es', {
@@ -69,6 +72,23 @@ const totalCounted = computed(() =>
 )
 const totalDifference = computed(() => totalCounted.value - totalExpected.value)
 
+function showToast(message: string) {
+  toastMessage.value = message
+  if (toastTimeout) {
+    clearTimeout(toastTimeout)
+  }
+  toastTimeout = setTimeout(() => {
+    toastMessage.value = ''
+    toastTimeout = undefined
+  }, 2800)
+}
+
+onUnmounted(() => {
+  if (toastTimeout) {
+    clearTimeout(toastTimeout)
+  }
+})
+
 function beginDay() {
   errorMessage.value = ''
   if (!date.value) {
@@ -104,11 +124,18 @@ function addMovement() {
     time: new Date().toISOString()
   })
   movementAmount.value = null
-  movementConcept.value = ''
+  if (!keepMovementContext.value) {
+    movementConcept.value = ''
+  }
+  showToast('Movimiento agregado')
 }
 
 function removeMovement(id: number) {
+  const movementExists = movements.value.some(movement => movement.id === id)
   movements.value = movements.value.filter(movement => movement.id !== id)
+  if (movementExists) {
+    showToast('Movimiento eliminado')
+  }
 }
 
 function startClosing() {
@@ -287,6 +314,7 @@ async function downloadReport() {
               v-model:movement-payment-method="movementPaymentMethod"
               v-model:movement-amount="movementAmount"
               v-model:movement-concept="movementConcept"
+              v-model:keep-movement-context="keepMovementContext"
               :status="status"
               :movements="movements"
               :error-message="errorMessage"
@@ -322,5 +350,17 @@ async function downloadReport() {
         :total-difference="totalDifference"
       />
     </main>
+    <div
+      v-if="toastMessage"
+      class="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-lg border bg-white px-4 py-3 text-sm font-medium shadow-[0_8px_28px_#202a241f] max-[520px]:bottom-3 max-[520px]:right-3"
+      :class="toastMessage === 'Movimiento eliminado' ? 'border-[#f0c5c8] text-[#c34e59]' : 'border-[#b8e4d1] text-[#21835f]'"
+      role="status"
+      aria-live="polite"
+    >
+      <svg class="size-4 flex-none" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="m5 12 4 4L19 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      {{ toastMessage }}
+    </div>
   </div>
 </template>
