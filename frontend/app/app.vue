@@ -25,6 +25,8 @@ const closingBalances = reactive<Record<CategoryId, number>>({
   variable: 0
 })
 const movements = ref<CashMovement[]>([])
+const checkoutId = ref<string | null>(null)
+const isFinishingClose = ref(false)
 const movementCategory = ref<CategoryId>('variable')
 const movementType = ref<'entrada' | 'salida'>('entrada')
 const movementPaymentMethod = ref<PaymentMethod>('Efectivo')
@@ -33,8 +35,15 @@ const movementConcept = ref('')
 const keepMovementContext = ref(false)
 const errorMessage = ref('')
 const downloadError = ref('')
+const inventoryApiBase = useRuntimeConfig().public.apiBase.replace(/\/+$/, '')
 const toastMessage = ref('')
 let toastTimeout: ReturnType<typeof setTimeout> | undefined
+let lastMovementId = 0
+
+function nextMovementId() {
+  lastMovementId = Math.max(Date.now(), lastMovementId + 1)
+  return lastMovementId
+}
 
 const todayLabel = computed(() =>
   new Date(`${date.value}T12:00:00`).toLocaleDateString('es', {
@@ -100,6 +109,7 @@ function beginDay() {
     errorMessage.value = 'Los saldos iniciales no pueden ser negativos.'
     return
   }
+  checkoutId.value = crypto.randomUUID()
   status.value = 'open'
 }
 
@@ -116,7 +126,7 @@ function addMovement() {
   }
 
   movements.value.unshift({
-    id: Date.now(),
+    id: nextMovementId(),
     category: movementCategory.value,
     type: movementType.value,
     paymentMethod: movementPaymentMethod.value,
@@ -139,6 +149,38 @@ function removeMovement(id: number) {
   }
 }
 
+function importInventoryProduct(
+  item: { id: string; name: string; quantity: number; sale_price: number },
+  quantity: number,
+  paymentMethod: PaymentMethod
+) {
+  errorMessage.value = ''
+  const alreadyReserved = movements.value
+    .filter(movement => movement.inventoryItemId === item.id)
+    .reduce((total, movement) => total + (movement.inventoryQuantity ?? 0), 0)
+  if (!Number.isInteger(quantity) || quantity <= 0 || alreadyReserved + quantity > item.quantity) {
+    errorMessage.value = `No hay suficientes existencias de ${item.name} para agregar esa cantidad.`
+    return
+  }
+  if (!Number.isFinite(item.sale_price) || item.sale_price <= 0) {
+    errorMessage.value = `El producto ${item.name} necesita un precio de venta mayor que cero para registrarlo como movimiento.`
+    return
+  }
+
+  movements.value.unshift({
+    id: nextMovementId(),
+    category: movementCategory.value,
+    type: 'entrada',
+    paymentMethod,
+    amount: Math.round(item.sale_price * quantity * 100) / 100,
+    concept: `${item.name} × ${quantity}`,
+    time: new Date().toISOString(),
+    inventoryItemId: item.id,
+    inventoryQuantity: quantity
+  })
+  showToast('Producto agregado al movimiento')
+}
+
 function startClosing() {
   errorMessage.value = ''
   for (const category of CATEGORIES) {
@@ -147,11 +189,50 @@ function startClosing() {
   status.value = 'closing'
 }
 
-function finishClosing() {
+async function finishClosing() {
   errorMessage.value = ''
   if (CATEGORIES.some(category => !Number.isFinite(closingBalances[category.id]) || closingBalances[category.id] < 0)) {
     errorMessage.value = 'Los importes contados deben ser válidos y no pueden ser negativos.'
     return
+  }
+
+  const consumedItems = new Map<string, number>()
+  for (const movement of movements.value) {
+    if (movement.inventoryItemId && movement.inventoryQuantity) {
+      consumedItems.set(
+        movement.inventoryItemId,
+        (consumedItems.get(movement.inventoryItemId) ?? 0) + movement.inventoryQuantity
+      )
+    }
+  }
+  if (consumedItems.size > 0) {
+    if (!checkoutId.value) {
+      errorMessage.value = 'No se encontró el identificador de este cierre. Vuelve al arqueo e inténtalo otra vez.'
+      return
+    }
+    isFinishingClose.value = true
+    try {
+      await $fetch(`${inventoryApiBase}/inventory/consume`, {
+        method: 'POST',
+        body: {
+          checkout_id: checkoutId.value,
+          items: [...consumedItems].map(([id, quantity]) => ({ id, quantity }))
+        }
+      })
+      window.dispatchEvent(new CustomEvent('inventory:updated'))
+    } catch (error) {
+      if (error && typeof error === 'object' && 'data' in error) {
+        const data = error.data
+        if (data && typeof data === 'object' && 'error' in data && typeof data.error === 'string') {
+          errorMessage.value = data.error
+          return
+        }
+      }
+      errorMessage.value = error instanceof Error ? error.message : 'No se pudo descontar el inventario.'
+      return
+    } finally {
+      isFinishingClose.value = false
+    }
   }
   status.value = 'closed'
 }
@@ -167,6 +248,7 @@ function newCashCount() {
     closingBalances[category.id] = 0
   }
   movements.value = []
+  checkoutId.value = null
   errorMessage.value = ''
 }
 
@@ -374,6 +456,7 @@ async function downloadReport() {
               :movements="movements"
               :error-message="errorMessage"
               @add-movement="addMovement"
+              @import-product="importInventoryProduct"
               @remove-movement="removeMovement"
             />
             <ClosingPanel
@@ -382,6 +465,8 @@ async function downloadReport() {
               :expected-balances="expectedBalances"
               :total-expected="totalExpected"
               :total-difference="totalDifference"
+              :pending-product-units="movements.reduce((total, movement) => total + (movement.inventoryQuantity ?? 0), 0)"
+              :is-finishing-close="isFinishingClose"
               :error-message="errorMessage"
               :download-error="downloadError"
               @start-closing="startClosing"

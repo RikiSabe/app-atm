@@ -16,6 +16,8 @@ export interface CashMovement {
   amount: number
   concept: string
   time: string
+  inventoryItemId?: string
+  inventoryQuantity?: number
 }
 
 export interface CashMovementDetail extends CashMovement {

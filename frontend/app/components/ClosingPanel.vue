@@ -13,6 +13,8 @@ defineProps<{
   expectedBalances: Record<CategoryId, number>
   totalExpected: number
   totalDifference: number
+  pendingProductUnits: number
+  isFinishingClose: boolean
   errorMessage: string
   downloadError: string
 }>()
@@ -34,6 +36,7 @@ defineEmits<{
       <div class="text-[8px] font-bold tracking-[1.05px] text-[#9296a7]">FIN DE JORNADA</div>
       <h3 class="mb-[5px] mt-2 text-[15px] font-bold tracking-[-.2px] text-[#313446]">¿Listo para cerrar?</h3>
       <p class="m-0 text-[9px] leading-[1.7] text-[#8c90a0]">Controla el efectivo de cada categoría y compáralo con el saldo esperado.</p>
+      <p v-if="pendingProductUnits" class="mt-2 rounded-md bg-[#f7f5ff] px-2.5 py-2 text-[9px] leading-[1.5] text-[#6e5bc9]">Al confirmar, se descontarán {{ pendingProductUnits }} {{ pendingProductUnits === 1 ? 'unidad' : 'unidades' }} del inventario.</p>
       <div class="my-[15px] flex items-center justify-between gap-2 rounded-[7px] border border-[#eff0f5] bg-[#fafafd] px-[10px] py-[11px] text-[9px] text-[#878b9b]">
         <span>Saldo esperado</span>
         <strong class="text-[11px] text-[#393c4e]">${{ formatAmount(totalExpected) }}</strong>
@@ -63,8 +66,8 @@ defineEmits<{
         </small>
       </label>
       <p v-if="errorMessage" class="mt-3 text-[10px] leading-[1.5] text-[#c34e59]" role="alert">{{ errorMessage }}</p>
-      <button type="button" class="mt-[13px] inline-flex min-h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-[7px] bg-[#7966de] px-[15px] text-[11px] font-semibold text-white shadow-[0_4px_9px_#7966de29] transition hover:-translate-y-px hover:bg-[#6955d0] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b4a8ff] focus-visible:outline-offset-2" @click="$emit('finishClosing')">
-        Confirmar cierre
+      <button type="button" :disabled="isFinishingClose" class="mt-[13px] inline-flex min-h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-[7px] bg-[#7966de] px-[15px] text-[11px] font-semibold text-white shadow-[0_4px_9px_#7966de29] transition hover:-translate-y-px hover:bg-[#6955d0] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b4a8ff] focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-60" @click="$emit('finishClosing')">
+        {{ isFinishingClose ? 'Descontando inventario…' : 'Confirmar cierre' }}
         <svg class="size-4" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m5 12 4.5 4.5L19 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
       </button>
       <button type="button" class="mx-auto mt-[10px] block cursor-pointer border-0 bg-transparent px-[6px] py-[3px] text-[9px] text-[#777b8b] underline decoration-1 underline-offset-2 hover:text-[#6552cc] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b4a8ff]" @click="$emit('backToMovements')">Volver a los movimientos</button>
