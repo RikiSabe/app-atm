@@ -35,7 +35,7 @@ const emit = defineEmits<{
   'update:movementConcept': [value: string]
   'update:keepMovementContext': [value: boolean]
   addMovement: []
-  importProduct: [item: { id: string; name: string; quantity: number; sale_price: number }, quantity: number]
+  importProduct: [item: { id: string; name: string; quantity: number; sale_price: number }, quantity: number, paymentMethod: PaymentMethod]
   removeMovement: [id: number]
 }>()
 
@@ -203,7 +203,7 @@ const movementConceptModel = computed({
       v-if="showInventoryPicker"
       :reserved-quantities="reservedQuantities"
       @close="showInventoryPicker = false"
-      @select="(item, quantity) => { showInventoryPicker = false; $emit('importProduct', item, quantity) }"
+      @select="(item, quantity, paymentMethod) => { showInventoryPicker = false; $emit('importProduct', item, quantity, paymentMethod) }"
     />
   </div>
 </template>

@@ -151,7 +151,8 @@ function removeMovement(id: number) {
 
 function importInventoryProduct(
   item: { id: string; name: string; quantity: number; sale_price: number },
-  quantity: number
+  quantity: number,
+  paymentMethod: PaymentMethod
 ) {
   errorMessage.value = ''
   const alreadyReserved = movements.value
@@ -170,7 +171,7 @@ function importInventoryProduct(
     id: nextMovementId(),
     category: movementCategory.value,
     type: 'entrada',
-    paymentMethod: movementPaymentMethod.value,
+    paymentMethod,
     amount: Math.round(item.sale_price * quantity * 100) / 100,
     concept: `${item.name} × ${quantity}`,
     time: new Date().toISOString(),

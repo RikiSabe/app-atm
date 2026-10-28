@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { PaymentMethod } from '~/constants/cash'
+
 interface SellableInventoryItem {
   id: string
   name: string
@@ -12,13 +14,14 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  select: [item: SellableInventoryItem, quantity: number]
+  select: [item: SellableInventoryItem, quantity: number, paymentMethod: PaymentMethod]
 }>()
 
 const items = ref<SellableInventoryItem[]>([])
 const search = ref('')
 const selectedItemId = ref('')
 const selectedQuantity = ref(1)
+const selectedPaymentMethod = ref<PaymentMethod>('Efectivo')
 const isLoading = ref(true)
 const loadError = ref('')
 const apiBase = useRuntimeConfig().public.apiBase.replace(/\/+$/, '')
@@ -64,7 +67,7 @@ function addSelectedItem() {
       selectedQuantity.value < 1 || selectedQuantity.value > item.availableQuantity) {
     return
   }
-  emit('select', item, selectedQuantity.value)
+  emit('select', item, selectedQuantity.value, selectedPaymentMethod.value)
 }
 </script>
 
@@ -128,6 +131,20 @@ function addSelectedItem() {
             <input v-model.number="selectedQuantity" class="h-9 w-[76px] rounded-md border border-[#e8eaf0] bg-white px-2 text-[10px] outline-none focus:border-[#b3a8f1]" type="number" min="1" :max="selectedItem.availableQuantity" step="1" />
           </label>
         </div>
+        <fieldset class="mb-3">
+          <legend class="mb-2 text-[9px] font-semibold text-[#55596a]">Método de pago</legend>
+          <div class="grid grid-cols-2 gap-2">
+            <label
+              v-for="paymentMethod in ['Efectivo', 'QR'] as const"
+              :key="paymentMethod"
+              class="flex min-h-9 cursor-pointer items-center justify-center gap-2 rounded-md border text-[10px] font-semibold transition"
+              :class="selectedPaymentMethod === paymentMethod ? 'border-[#a99be9] bg-[#f7f5ff] text-[#5c4bc0]' : 'border-[#e8eaf0] bg-white text-[#777b8b]'"
+            >
+              <input v-model="selectedPaymentMethod" class="sr-only" type="radio" name="inventory-payment-method" :value="paymentMethod" />
+              {{ paymentMethod }}
+            </label>
+          </div>
+        </fieldset>
         <button type="button" class="inline-flex min-h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-[7px] bg-[#7966de] px-3 text-[10px] font-semibold text-white transition hover:bg-[#6955d0] disabled:cursor-not-allowed disabled:opacity-50" :disabled="!Number.isInteger(selectedQuantity) || selectedQuantity < 1 || selectedQuantity > selectedItem.availableQuantity" @click="addSelectedItem">
           Agregar al movimiento · ${{ new Intl.NumberFormat('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(selectedItem.sale_price * selectedQuantity) }}
         </button>
