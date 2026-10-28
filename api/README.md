@@ -17,7 +17,7 @@ go mod download
 go run .
 ```
 
-La API escucha en `http://localhost:5665` de forma predeterminada. `CORS_ALLOWED_ORIGINS` acepta una lista separada por comas; si no se configura, solo permite el origen de desarrollo `http://localhost:3000`. En producción, configura los dominios exactos del frontend. No se habilitan credenciales CORS porque la API no usa cookies.
+La API escucha en `http://localhost:5665` de forma predeterminada. `CORS_ALLOWED_ORIGINS` acepta una lista separada por comas; si no se configura, permite `http://localhost:3000` y el frontend de producción `https://app-atm.vercel.app`. En producción, configura en el servicio del backend los dominios exactos del frontend. Si defines esta variable, reemplaza la lista predeterminada, así que debe incluir `https://app-atm.vercel.app` (y cualquier otro dominio usado por el frontend), separado por comas. No se habilitan credenciales CORS porque la API no usa cookies.
 
 Configura `NUXT_PUBLIC_API_BASE` en el frontend con la URL base terminada en `/api`. El valor predeterminado local es `http://localhost:5665/api`.
 

@@ -29,7 +29,10 @@ func main() {
 	router := mux.NewRouter()
 	routers.InitEndPoints(router)
 
-	allowedOrigins := []string{"http://localhost:3000"}
+	allowedOrigins := []string{
+		"http://localhost:3000",
+		"https://app-atm.vercel.app",
+	}
 	if configuredOrigins := os.Getenv("CORS_ALLOWED_ORIGINS"); configuredOrigins != "" {
 		allowedOrigins = strings.Split(configuredOrigins, ",")
 		for i := range allowedOrigins {
