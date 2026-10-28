@@ -2,7 +2,11 @@
 export default defineNuxtConfig({
   runtimeConfig: {
     public: {
-      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:5665/api'
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || (
+        process.env.NODE_ENV === 'production'
+          ? 'https://app-atm-srcb.vercel.app/api'
+          : 'http://localhost:5665/api'
+      )
     }
   },
   modules: ['@nuxtjs/tailwindcss'],
