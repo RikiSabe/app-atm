@@ -1,75 +1,31 @@
-# Nuxt Minimal Starter
+# Monorepo
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+Este repositorio contiene el frontend Nuxt y la API de inventario en Go:
 
-## Setup
+- `frontend/`: aplicacion web Nuxt, desplegada por Vercel.
+- `api/`: API REST en Go para administrar el inventario con PostgreSQL.
 
-Make sure to install dependencies:
-
-```bash
-# npm
-npm install
-
-# pnpm
-pnpm install
-
-# yarn
-yarn install
-
-# bun
-bun install
-```
-
-## Development Server
-
-Start the development server on `http://localhost:3000`:
+## Desarrollo del frontend
 
 ```bash
-# npm
+cd frontend
+npm ci
 npm run dev
-
-# pnpm
-pnpm dev
-
-# yarn
-yarn dev
-
-# bun
-bun run dev
 ```
 
-## Production
-
-Build the application for production:
+Para compilar localmente:
 
 ```bash
-# npm
+cd frontend
 npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
 ```
 
-Locally preview production build:
+En Vercel, configura **Root Directory** como `frontend`. El despliegue automatico desde GitHub puede mantenerse habilitado sin agregar credenciales de despliegue al workflow.
 
-```bash
-# npm
-npm run preview
+## API de inventario
 
-# pnpm
-pnpm preview
+Consulta [`api/README.md`](./api/README.md) para conectar la API con Supabase, iniciarla y definir `NUXT_PUBLIC_API_BASE` en el frontend. El arqueo de caja continúa funcionando en memoria; el backend persiste únicamente los artículos del inventario.
 
-# yarn
-yarn preview
+## GitHub Actions
 
-# bun
-bun run preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+Los workflows de GitHub Actions compilan el frontend y ejecutan pruebas/vet del backend cuando cambian sus respectivos directorios. No despliegan la aplicacion; Vercel sigue encargandose del despliegue del frontend.

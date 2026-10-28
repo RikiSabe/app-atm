@@ -25,6 +25,7 @@ const props = defineProps<{
   keepMovementContext: boolean
   errorMessage: string
 }>()
+const showInventoryPicker = ref(false)
 
 const emit = defineEmits<{
   'update:movementCategory': [value: CategoryId]
@@ -34,8 +35,16 @@ const emit = defineEmits<{
   'update:movementConcept': [value: string]
   'update:keepMovementContext': [value: boolean]
   addMovement: []
+  importProduct: [item: { id: string; name: string; quantity: number; sale_price: number }, quantity: number]
   removeMovement: [id: number]
 }>()
+
+const reservedQuantities = computed(() => props.movements.reduce<Record<string, number>>((reserved, movement) => {
+  if (movement.inventoryItemId && movement.inventoryQuantity) {
+    reserved[movement.inventoryItemId] = (reserved[movement.inventoryItemId] ?? 0) + movement.inventoryQuantity
+  }
+  return reserved
+}, {}))
 
 const movementCategoryModel = computed({
   get: () => props.movementCategory,
@@ -120,6 +129,18 @@ const movementConceptModel = computed({
       <p v-if="errorMessage" class="mb-0 mt-3 text-[10px] leading-[1.5] text-[#c34e59]" role="alert">{{ errorMessage }}</p>
     </article>
 
+    <article v-if="status === 'open'" class="flex items-center justify-between gap-4 rounded-xl border border-[#eceef4] bg-white px-[18px] py-[14px] shadow-[0_3px_12px_#282b3c05] max-[520px]:px-3">
+      <div class="min-w-0">
+        <div class="text-[9px] font-bold tracking-[1.05px] text-[#9296a7]">VENTA DE PRODUCTOS</div>
+        <h2 class="mb-1 mt-1.5 text-[13px] font-bold text-[#282b3b]">Importar del inventario</h2>
+        <p class="m-0 text-[9px] leading-[1.5] text-[#898d9c]">Agrega productos como entradas al precio de venta. Las existencias se descuentan al cerrar la caja.</p>
+      </div>
+      <button type="button" class="inline-flex min-h-9 flex-none cursor-pointer items-center justify-center gap-1.5 rounded-[7px] bg-[#7966de] px-3 text-[9px] font-semibold text-white transition hover:bg-[#6955d0] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b4a8ff] disabled:cursor-not-allowed disabled:opacity-60" @click="showInventoryPicker = true">
+        <svg class="size-[14px]" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3" stroke="currentColor" stroke-width="1.8" /><path d="m15.5 15.5 4.2 4.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
+        Buscar producto
+      </button>
+    </article>
+
     <article class="overflow-hidden rounded-xl border border-[#eceef4] bg-white px-[18px] pt-[17px] shadow-[0_3px_12px_#282b3c05] max-[520px]:px-3">
       <div class="flex items-center justify-between gap-[10px]">
         <div>
@@ -178,5 +199,11 @@ const movementConceptModel = computed({
         <p class="mb-0 mt-1 text-[9px] text-[#999dac]">Cuando registres entradas o salidas, aparecerán aquí.</p>
       </div>
     </article>
+    <InventoryPickerModal
+      v-if="showInventoryPicker"
+      :reserved-quantities="reservedQuantities"
+      @close="showInventoryPicker = false"
+      @select="(item, quantity) => { showInventoryPicker = false; $emit('importProduct', item, quantity) }"
+    />
   </div>
 </template>
