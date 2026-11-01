@@ -120,8 +120,8 @@ function addMovement() {
     errorMessage.value = 'Escribe un concepto para identificar el movimiento.'
     return
   }
-  if (!Number.isFinite(amount) || amount <= 0) {
-    errorMessage.value = 'El importe debe ser mayor que cero.'
+  if (!Number.isFinite(amount) || amount < 0) {
+    errorMessage.value = 'El importe debe ser igual o mayor que cero.'
     return
   }
 
@@ -162,8 +162,8 @@ function importInventoryProduct(
     errorMessage.value = `No hay suficientes existencias de ${item.name} para agregar esa cantidad.`
     return
   }
-  if (!Number.isFinite(item.sale_price) || item.sale_price <= 0) {
-    errorMessage.value = `El producto ${item.name} necesita un precio de venta mayor que cero para registrarlo como movimiento.`
+  if (!Number.isFinite(item.sale_price) || item.sale_price < 0) {
+    errorMessage.value = `El producto ${item.name} necesita un precio de venta igual o mayor que cero para registrarlo como movimiento.`
     return
   }
 
