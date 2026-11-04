@@ -35,7 +35,7 @@ const emit = defineEmits<{
   'update:movementConcept': [value: string]
   'update:keepMovementContext': [value: boolean]
   addMovement: []
-  importProduct: [item: { id: string; name: string; quantity: number; sale_price: number }, quantity: number, paymentMethod: PaymentMethod]
+  importProduct: [item: { id: string; name: string; quantity: number; sale_price: number }, quantity: number, paymentMethod: PaymentMethod, salePrice: number]
   removeMovement: [id: number]
 }>()
 
@@ -114,7 +114,7 @@ const movementConceptModel = computed({
           <span class="mb-[7px] block text-[10px] font-semibold text-[#55596a]">Importe</span>
           <span class="flex min-h-[38px] items-center rounded-[7px] border border-[#e8eaf0] bg-white px-2 focus-within:border-[#b3a8f1] focus-within:shadow-[0_0_0_2px_#eeeaff]">
             <span class="mr-[5px] text-[10px] text-[#a3a7b5]">$</span>
-            <input v-model.number="movementAmountModel" class="w-full min-w-0 border-0 bg-transparent text-[10px] text-[#303345] outline-none placeholder:text-[#b7bac5] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b4a8ff]" type="number" min="0.01" step="0.01" placeholder="0.00" />
+            <input v-model.number="movementAmountModel" class="w-full min-w-0 border-0 bg-transparent text-[10px] text-[#303345] outline-none placeholder:text-[#b7bac5] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b4a8ff]" type="number" min="0" step="0.01" placeholder="0.00" />
           </span>
         </label>
         <label class="min-w-0 max-[1100px]:col-span-2 max-[520px]:col-span-2">
@@ -203,7 +203,7 @@ const movementConceptModel = computed({
       v-if="showInventoryPicker"
       :reserved-quantities="reservedQuantities"
       @close="showInventoryPicker = false"
-      @select="(item, quantity, paymentMethod) => { showInventoryPicker = false; $emit('importProduct', item, quantity, paymentMethod) }"
+      @select="(item, quantity, paymentMethod, salePrice) => { showInventoryPicker = false; $emit('importProduct', item, quantity, paymentMethod, salePrice) }"
     />
   </div>
 </template>

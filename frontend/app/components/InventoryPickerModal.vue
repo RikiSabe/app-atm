@@ -14,13 +14,14 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  select: [item: SellableInventoryItem, quantity: number, paymentMethod: PaymentMethod]
+  select: [item: SellableInventoryItem, quantity: number, paymentMethod: PaymentMethod, salePrice: number]
 }>()
 
 const items = ref<SellableInventoryItem[]>([])
 const search = ref('')
 const selectedItemId = ref('')
 const selectedQuantity = ref(1)
+const selectedSalePrice = ref<number | string>(0)
 const selectedPaymentMethod = ref<PaymentMethod>('Efectivo')
 const isLoading = ref(true)
 const loadError = ref('')
@@ -41,6 +42,16 @@ const filteredItems = computed(() => {
 const selectedItem = computed(() =>
   availableItems.value.find(item => item.id === selectedItemId.value)
 )
+const isSalePriceValid = computed(() =>
+  typeof selectedSalePrice.value === 'number' &&
+  Number.isFinite(selectedSalePrice.value) &&
+  selectedSalePrice.value >= 0
+)
+const selectedTotal = computed(() =>
+  isSalePriceValid.value
+    ? Math.round(Number(selectedSalePrice.value) * selectedQuantity.value * 100) / 100
+    : 0
+)
 
 onMounted(loadItems)
 
@@ -59,15 +70,17 @@ async function loadItems() {
 function chooseItem(item: SellableInventoryItem) {
   selectedItemId.value = item.id
   selectedQuantity.value = 1
+  selectedSalePrice.value = item.sale_price
 }
 
 function addSelectedItem() {
   const item = selectedItem.value
   if (!item || !Number.isInteger(selectedQuantity.value) ||
-      selectedQuantity.value < 1 || selectedQuantity.value > item.availableQuantity) {
+      selectedQuantity.value < 1 || selectedQuantity.value > item.availableQuantity ||
+      !isSalePriceValid.value) {
     return
   }
-  emit('select', item, selectedQuantity.value, selectedPaymentMethod.value)
+  emit('select', item, selectedQuantity.value, selectedPaymentMethod.value, Number(selectedSalePrice.value))
 }
 </script>
 
@@ -83,7 +96,7 @@ function addSelectedItem() {
         <div>
           <div class="text-[9px] font-bold tracking-[1.05px] text-[#9296a7]">IMPORTAR DEL INVENTARIO</div>
           <h2 id="inventory-picker-title" class="mb-1 mt-2 text-[16px] font-bold text-[#282b3b]">Buscar producto</h2>
-          <p class="m-0 text-[10px] text-[#898d9c]">El precio de venta se agregará como entrada al movimiento.</p>
+          <p class="m-0 text-[10px] text-[#898d9c]">Ajusta el precio para esta venta sin cambiar el precio del inventario.</p>
         </div>
         <button type="button" class="grid size-8 flex-none cursor-pointer place-items-center rounded-md border border-[#e8eaf0] bg-white text-[#777b8b] hover:bg-[#f8f8fb]" aria-label="Cerrar" @click="emit('close')">×</button>
       </header>
@@ -124,13 +137,19 @@ function addSelectedItem() {
         <div class="mb-3 flex items-center justify-between gap-3">
           <div class="min-w-0">
             <strong class="block truncate text-[10px] text-[#3f4253]">{{ selectedItem.name }}</strong>
-            <small class="text-[9px] text-[#898d9c]">${{ new Intl.NumberFormat('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(selectedItem.sale_price) }} por unidad</small>
           </div>
           <label class="flex items-center gap-2 text-[9px] font-semibold text-[#55596a]">
             Cantidad
             <input v-model.number="selectedQuantity" class="h-9 w-[76px] rounded-md border border-[#e8eaf0] bg-white px-2 text-[10px] outline-none focus:border-[#b3a8f1]" type="number" min="1" :max="selectedItem.availableQuantity" step="1" />
           </label>
         </div>
+        <label class="mb-3 block text-[9px] font-semibold text-[#55596a]">
+          Precio de venta por unidad
+          <span class="mt-1 flex min-h-9 items-center rounded-md border border-[#e8eaf0] bg-white px-2 focus-within:border-[#b3a8f1]">
+            <span class="mr-2 text-[10px] text-[#a3a7b5]">$</span>
+            <input v-model.number="selectedSalePrice" class="w-full border-0 bg-transparent text-[10px] outline-none" type="number" min="0" step="0.01" aria-label="Precio de venta por unidad" />
+          </span>
+        </label>
         <fieldset class="mb-3">
           <legend class="mb-2 text-[9px] font-semibold text-[#55596a]">Método de pago</legend>
           <div class="grid grid-cols-2 gap-2">
@@ -145,8 +164,8 @@ function addSelectedItem() {
             </label>
           </div>
         </fieldset>
-        <button type="button" class="inline-flex min-h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-[7px] bg-[#7966de] px-3 text-[10px] font-semibold text-white transition hover:bg-[#6955d0] disabled:cursor-not-allowed disabled:opacity-50" :disabled="!Number.isInteger(selectedQuantity) || selectedQuantity < 1 || selectedQuantity > selectedItem.availableQuantity" @click="addSelectedItem">
-          Agregar al movimiento · ${{ new Intl.NumberFormat('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(selectedItem.sale_price * selectedQuantity) }}
+        <button type="button" class="inline-flex min-h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-[7px] bg-[#7966de] px-3 text-[10px] font-semibold text-white transition hover:bg-[#6955d0] disabled:cursor-not-allowed disabled:opacity-50" :disabled="!Number.isInteger(selectedQuantity) || selectedQuantity < 1 || selectedQuantity > selectedItem.availableQuantity || !isSalePriceValid" @click="addSelectedItem">
+          Agregar al movimiento · ${{ new Intl.NumberFormat('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(selectedTotal) }}
         </button>
       </footer>
     </section>
