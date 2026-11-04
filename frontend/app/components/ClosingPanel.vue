@@ -17,11 +17,13 @@ defineProps<{
   isFinishingClose: boolean
   errorMessage: string
   downloadError: string
+  previewError: string
 }>()
 
 defineEmits<{
   startClosing: []
   finishClosing: []
+  previewDraft: []
   backToMovements: []
   download: []
 }>()
@@ -70,6 +72,14 @@ defineEmits<{
         {{ isFinishingClose ? 'Descontando inventario…' : 'Confirmar cierre' }}
         <svg class="size-4" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m5 12 4.5 4.5L19 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
       </button>
+      <button
+        type="button"
+        class="mt-2 inline-flex min-h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-[7px] border border-[#d9dce4] bg-[#f0f1f4] px-[15px] text-[10px] font-semibold text-[#626675] transition hover:border-[#c5c8d1] hover:bg-[#e6e7eb] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#9da1ad] focus-visible:outline-offset-2"
+        @click="$emit('previewDraft')"
+      >
+        Vista previa del cierre
+      </button>
+      <p v-if="previewError" class="mt-2 text-[10px] leading-[1.5] text-[#c34e59]" role="alert">{{ previewError }}</p>
       <button type="button" class="mx-auto mt-[10px] block cursor-pointer border-0 bg-transparent px-[6px] py-[3px] text-[9px] text-[#777b8b] underline decoration-1 underline-offset-2 hover:text-[#6552cc] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b4a8ff]" @click="$emit('backToMovements')">Volver a los movimientos</button>
     </article>
 
@@ -79,17 +89,17 @@ defineEmits<{
       </div>
       <div class="text-[8px] font-bold tracking-[1.05px] text-[#9296a7]">CIERRE COMPLETADO</div>
       <h3 class="mb-[5px] mt-2 text-[15px] font-bold tracking-[-.2px] text-[#313446]">El día está cerrado.</h3>
-      <p class="m-0 text-[9px] leading-[1.7] text-[#8c90a0]">Descarga el resumen del arqueo en PDF para conservarlo.</p>
+      <p class="m-0 text-[9px] leading-[1.7] text-[#8c90a0]">Abre el resumen del arqueo en PDF dentro del navegador.</p>
       <div class="my-[15px] flex items-center justify-between gap-2 rounded-[7px] border border-[#eff0f5] bg-[#fafafd] px-[10px] py-[11px] text-[9px] text-[#878b9b]">
         <span>Diferencia total</span>
         <strong :class="totalDifference === 0 ? 'text-[#279978]' : 'text-[#c16b4c]'">{{ formatSignedAmount(totalDifference) }}</strong>
       </div>
       <button type="button" class="inline-flex min-h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-[7px] bg-[#7966de] px-[15px] text-[11px] font-semibold text-white shadow-[0_4px_9px_#7966de29] transition hover:-translate-y-px hover:bg-[#6955d0] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b4a8ff] focus-visible:outline-offset-2" @click="$emit('download')">
-        <svg class="size-4" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.5v11m0 0 4-4m-4 4-4-4M4.5 16v4h15v-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg>
-        Descargar PDF
+        <svg class="size-4" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.5 12s3.2-6 9.5-6 9.5 6 9.5 6-3.2 6-9.5 6-9.5-6-9.5-6Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /><circle cx="12" cy="12" r="2.5" stroke="currentColor" stroke-width="1.7" /></svg>
+        Ver PDF
       </button>
       <p v-if="downloadError" class="mt-3 text-[10px] leading-[1.5] text-[#c34e59]" role="alert">{{ downloadError }}</p>
-      <div v-else class="mt-3 flex items-start gap-[6px] text-[8px] leading-[1.5] text-[#999dac]"><span class="text-[#8775df]">✳</span> En iPhone, elige “Guardar en Archivos” en el menú que aparece.</div>
+      <div v-else class="mt-3 flex items-start gap-[6px] text-[8px] leading-[1.5] text-[#999dac]"><span class="text-[#8775df]">✳</span> Usa los controles del visor del navegador para imprimirlo o descargarlo.</div>
     </article>
 
     <div class="text-[9px] text-[#9296a4]">

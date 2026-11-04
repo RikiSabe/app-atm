@@ -23,6 +23,8 @@ const isLoadingInventory = ref(true)
 const isSavingInventory = ref(false)
 const deletingInventoryId = ref<string | null>(null)
 const apiBase = useRuntimeConfig().public.apiBase.replace(/\/+$/, '')
+const reportPreviewUrl = ref('')
+const reportFilename = ref('')
 
 function refreshAfterCheckout() {
   void loadInventory()
@@ -35,6 +37,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('inventory:updated', refreshAfterCheckout)
+  closeInventoryPreview()
 })
 
 const inventoryQuantityTotal = computed(() =>
@@ -77,7 +80,14 @@ function lastPdfTableY(pdf: jsPDF) {
   return (pdf as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY
 }
 
-async function downloadInventoryReport() {
+function closeInventoryPreview() {
+  if (reportPreviewUrl.value) {
+    URL.revokeObjectURL(reportPreviewUrl.value)
+    reportPreviewUrl.value = ''
+  }
+}
+
+async function previewInventoryReport() {
   inventoryReportError.value = ''
 
   try {
@@ -165,21 +175,14 @@ async function downloadInventoryReport() {
     pdf.setFontSize(8)
     pdf.setTextColor(133, 137, 153)
     pdf.text('Reporte generado desde el inventario de la aplicación.', 14, 285)
-
     const blob = pdf.output('blob')
-    const filename = `inventario-${generatedAt.toISOString().slice(0, 10)}.pdf`
-    const objectUrl = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = objectUrl
-    link.download = filename
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
+    closeInventoryPreview()
+    reportFilename.value = `inventario-${generatedAt.toISOString().slice(0, 10)}.pdf`
+    reportPreviewUrl.value = URL.createObjectURL(blob)
   } catch (error) {
     inventoryReportError.value = error instanceof Error
-      ? `No se pudo generar el reporte: ${error.message}`
-      : 'No se pudo generar el reporte por un error desconocido.'
+      ? `No se pudo generar la vista previa del reporte: ${error.message}`
+      : 'No se pudo generar la vista previa del reporte por un error desconocido.'
   }
 }
 
@@ -342,9 +345,9 @@ async function removeInventoryItem(item: InventoryItem) {
           <h2 class="text-[13px] font-bold text-[#282b3b]">Artículos</h2>
           <div class="flex items-center gap-2">
             <span class="text-[9px] text-[#9296a7]">{{ inventoryItems.length }} {{ inventoryItems.length === 1 ? 'artículo' : 'artículos' }}</span>
-            <button type="button" aria-label="Sacar reporte de todo el inventario" title="Sacar reporte de todo el inventario" :disabled="isLoadingInventory || Boolean(inventoryLoadError)" class="inline-flex min-h-8 cursor-pointer items-center justify-center gap-1.5 rounded-[7px] bg-[#282b3d] px-2.5 text-[9px] font-semibold text-white transition hover:bg-[#393c50] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b4a8ff] disabled:cursor-wait disabled:opacity-60" @click="downloadInventoryReport">
-              <svg class="size-[13px]" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.5v11m0 0 4-4m-4 4-4-4M4.5 16v4h15v-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg>
-              Sacar reporte
+            <button type="button" aria-label="Ver reporte de todo el inventario" title="Ver reporte de todo el inventario" :disabled="isLoadingInventory || Boolean(inventoryLoadError)" class="inline-flex min-h-8 cursor-pointer items-center justify-center gap-1.5 rounded-[7px] bg-[#282b3d] px-2.5 text-[9px] font-semibold text-white transition hover:bg-[#393c50] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b4a8ff] disabled:cursor-wait disabled:opacity-60" @click="previewInventoryReport">
+              <svg class="size-[13px]" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.5 12s3.2-6 9.5-6 9.5 6 9.5 6-3.2 6-9.5 6-9.5-6-9.5-6Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /><circle cx="12" cy="12" r="2.5" stroke="currentColor" stroke-width="1.7" /></svg>
+              Ver PDF
             </button>
           </div>
         </div>
@@ -392,5 +395,12 @@ async function removeInventoryItem(item: InventoryItem) {
       </div>
     </section>
     <p class="mt-4 text-center text-[9px] text-[#9296a4]">Los artículos se guardan en la base de datos del inventario.</p>
+    <PdfPreview
+      v-if="reportPreviewUrl"
+      :src="reportPreviewUrl"
+      :title="reportFilename"
+      :filename="reportFilename"
+      @close="closeInventoryPreview"
+    />
   </section>
 </template>

@@ -35,6 +35,10 @@ const movementConcept = ref('')
 const keepMovementContext = ref(false)
 const errorMessage = ref('')
 const downloadError = ref('')
+const previewError = ref('')
+const reportPreviewUrl = ref('')
+const reportFilename = ref('')
+const reportPreviewTitle = ref('')
 const inventoryApiBase = useRuntimeConfig().public.apiBase.replace(/\/+$/, '')
 const toastMessage = ref('')
 let toastTimeout: ReturnType<typeof setTimeout> | undefined
@@ -97,6 +101,7 @@ onUnmounted(() => {
   if (toastTimeout) {
     clearTimeout(toastTimeout)
   }
+  closeReportPreview()
 })
 
 function beginDay() {
@@ -152,7 +157,8 @@ function removeMovement(id: number) {
 function importInventoryProduct(
   item: { id: string; name: string; quantity: number; sale_price: number },
   quantity: number,
-  paymentMethod: PaymentMethod
+  paymentMethod: PaymentMethod,
+  salePrice: number
 ) {
   errorMessage.value = ''
   const alreadyReserved = movements.value
@@ -162,7 +168,7 @@ function importInventoryProduct(
     errorMessage.value = `No hay suficientes existencias de ${item.name} para agregar esa cantidad.`
     return
   }
-  if (!Number.isFinite(item.sale_price) || item.sale_price < 0) {
+  if (!Number.isFinite(salePrice) || salePrice < 0) {
     errorMessage.value = `El producto ${item.name} necesita un precio de venta igual o mayor que cero para registrarlo como movimiento.`
     return
   }
@@ -172,7 +178,7 @@ function importInventoryProduct(
     category: movementCategory.value,
     type: 'entrada',
     paymentMethod,
-    amount: Math.round(item.sale_price * quantity * 100) / 100,
+    amount: Math.round(salePrice * quantity * 100) / 100,
     concept: `${item.name} × ${quantity}`,
     time: new Date().toISOString(),
     inventoryItemId: item.id,
@@ -260,7 +266,138 @@ function formatPdfSignedAmount(amount: number) {
   return formatSignedAmount(amount).replace('−', '-')
 }
 
-async function downloadReport() {
+function closeReportPreview() {
+  if (reportPreviewUrl.value) {
+    URL.revokeObjectURL(reportPreviewUrl.value)
+    reportPreviewUrl.value = ''
+  }
+}
+
+function addDraftPageLabels(pdf: jsPDF) {
+  const pageCount = pdf.getNumberOfPages()
+  for (let page = 1; page <= pageCount; page += 1) {
+    pdf.setPage(page)
+    const pageWidth = pdf.internal.pageSize.getWidth()
+    const pageHeight = pdf.internal.pageSize.getHeight()
+    pdf.setDrawColor(190, 193, 201)
+    pdf.setTextColor(105, 109, 120)
+    pdf.setFont('helvetica', 'bold')
+    pdf.setFontSize(8)
+    pdf.text('VISTA PREVIA - NO ES CIERRE', 14, 14)
+    pdf.setFont('helvetica', 'normal')
+    pdf.setFontSize(8)
+    pdf.text(todayLabel.value, pageWidth - 14, 14, { align: 'right' })
+    pdf.line(14, 18, pageWidth - 14, 18)
+    pdf.line(14, pageHeight - 17, pageWidth - 14, pageHeight - 17)
+    pdf.text('Borrador de conteo; no confirma el cierre ni descuenta inventario.', 14, pageHeight - 11)
+    pdf.text(`Página ${page} de ${pageCount}`, pageWidth - 14, pageHeight - 11, { align: 'right' })
+  }
+}
+
+function previewDraft() {
+  previewError.value = ''
+
+  try {
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+    const entries = movements.value.filter(movement => movement.type === 'entrada')
+    const exits = movements.value.filter(movement => movement.type === 'salida')
+    const totalEntries = entries.reduce((total, movement) => total + movement.amount, 0)
+    const totalExits = exits.reduce((total, movement) => total + movement.amount, 0)
+    const totalCountedDraft = CATEGORIES.reduce(
+      (total, category) => total + closingBalances[category.id],
+      0
+    )
+    const totalDifferenceDraft = totalCountedDraft - totalExpected.value
+
+    pdf.setFont('helvetica', 'bold')
+    pdf.setFontSize(16)
+    pdf.setTextColor(75, 78, 88)
+    pdf.text('Vista previa de caja', 14, 30)
+    pdf.setFont('helvetica', 'normal')
+    pdf.setFontSize(9)
+    pdf.setTextColor(105, 109, 120)
+    pdf.text('Revisión del conteo antes de confirmar el cierre.', 14, 36)
+
+    pdf.setFont('helvetica', 'bold')
+    pdf.setFontSize(11)
+    pdf.setTextColor(75, 78, 88)
+    pdf.text('Resumen por categoría', 14, 46)
+    autoTable(pdf, {
+      head: [['Categoría', 'Saldo inicial', 'Entradas', 'Salidas', 'Esperado', 'Contado', 'Diferencia']],
+      body: CATEGORIES.map(category => {
+        const categoryEntries = movements.value
+          .filter(movement => movement.category === category.id && movement.type === 'entrada')
+          .reduce((total, movement) => total + movement.amount, 0)
+        const categoryExits = movements.value
+          .filter(movement => movement.category === category.id && movement.type === 'salida')
+          .reduce((total, movement) => total + movement.amount, 0)
+        return [
+          category.name,
+          `$${formatAmount(openingBalances[category.id])}`,
+          `$${formatAmount(categoryEntries)}`,
+          `$${formatAmount(categoryExits)}`,
+          `$${formatAmount(expectedBalances.value[category.id])}`,
+          `$${formatAmount(closingBalances[category.id])}`,
+          formatPdfSignedAmount(closingBalances[category.id] - expectedBalances.value[category.id])
+        ]
+      }),
+      foot: [[
+        'Total',
+        '',
+        `$${formatAmount(totalEntries)}`,
+        `$${formatAmount(totalExits)}`,
+        `$${formatAmount(totalExpected.value)}`,
+        `$${formatAmount(totalCountedDraft)}`,
+        formatPdfSignedAmount(totalDifferenceDraft)
+      ]],
+      startY: 50,
+      theme: 'grid',
+      styles: { font: 'helvetica', fontSize: 7, cellPadding: 2, overflow: 'linebreak', textColor: [70, 73, 83], lineColor: [203, 205, 212] },
+      headStyles: { fillColor: [218, 220, 225], textColor: [65, 68, 78], fontStyle: 'bold' },
+      footStyles: { fillColor: [237, 238, 241], textColor: [65, 68, 78], fontStyle: 'bold' },
+      margin: { top: 24, bottom: 23, left: 14, right: 14 }
+    })
+
+    const movementsStartY = lastPdfTableY(pdf) + 10
+    pdf.setFont('helvetica', 'bold')
+    pdf.setFontSize(11)
+    pdf.setTextColor(75, 78, 88)
+    pdf.text('Detalle de movimientos', 14, movementsStartY)
+    autoTable(pdf, {
+      head: [['Fecha y hora', 'Concepto', 'Categoría', 'Tipo', 'Método', 'Importe']],
+      body: movements.value.length
+        ? [...movements.value]
+            .sort((first, second) => Date.parse(first.time) - Date.parse(second.time))
+            .map(movement => [
+              formatDateTime(movement.time),
+              movement.concept,
+              CATEGORIES.find(category => category.id === movement.category)?.name ?? movement.category,
+              movement.type,
+              movement.paymentMethod,
+              `$${formatAmount(movement.amount)}`
+            ])
+        : [['', 'No se registraron movimientos.', '', '', '', '']],
+      startY: movementsStartY + 4,
+      theme: 'grid',
+      styles: { font: 'helvetica', fontSize: 8, cellPadding: 2.5, overflow: 'linebreak', textColor: [70, 73, 83], lineColor: [203, 205, 212] },
+      headStyles: { fillColor: [218, 220, 225], textColor: [65, 68, 78], fontStyle: 'bold' },
+      columnStyles: { 0: { cellWidth: 34 }, 2: { cellWidth: 31 }, 3: { cellWidth: 17 }, 4: { cellWidth: 19 }, 5: { cellWidth: 24, halign: 'right' } },
+      margin: { top: 24, bottom: 23, left: 14, right: 14 }
+    })
+
+    addDraftPageLabels(pdf)
+    closeReportPreview()
+    reportFilename.value = `previo-caja-${date.value}.pdf`
+    reportPreviewTitle.value = 'Vista previa de caja - Borrador'
+    reportPreviewUrl.value = URL.createObjectURL(pdf.output('blob'))
+  } catch (error) {
+    previewError.value = error instanceof Error
+      ? `No se pudo generar la vista previa: ${error.message}`
+      : 'No se pudo generar la vista previa por un error desconocido.'
+  }
+}
+
+async function previewReport() {
   downloadError.value = ''
 
   try {
@@ -335,25 +472,15 @@ async function downloadReport() {
       columnStyles: { 1: { halign: 'right' } },
       margin: { left: 14, right: 14 }
     })
-
     const blob = pdf.output('blob')
-    const filename = `arqueo-${date.value}.pdf`
-    const objectUrl = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = objectUrl
-    link.download = filename
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
+    closeReportPreview()
+    reportFilename.value = `arqueo-${date.value}.pdf`
+    reportPreviewTitle.value = 'Arqueo diario'
+    reportPreviewUrl.value = URL.createObjectURL(blob)
   } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      return
-    }
-
     downloadError.value = error instanceof Error
-      ? `No se pudo descargar el PDF: ${error.message}`
-      : 'No se pudo descargar el PDF por un error desconocido.'
+      ? `No se pudo generar la vista previa del PDF: ${error.message}`
+      : 'No se pudo generar la vista previa del PDF por un error desconocido.'
   }
 }
 </script>
@@ -401,10 +528,10 @@ async function downloadReport() {
             v-if="status === 'closed'"
             type="button"
             class="inline-flex min-h-8 cursor-pointer items-center justify-center gap-2 rounded-[7px] bg-[#282b3d] px-[11px] text-[10px] font-semibold text-white transition hover:bg-[#393c50] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b4a8ff] focus-visible:outline-offset-2 max-[520px]:min-h-[30px] max-[520px]:px-2 max-[520px]:text-[9px]"
-            @click="downloadReport"
+            @click="previewReport"
           >
-            <svg class="size-[14px]" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.5v11m0 0 4-4m-4 4-4-4M4.5 16v4h15v-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg>
-            Descargar PDF
+            <svg class="size-[14px]" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.5 12s3.2-6 9.5-6 9.5 6 9.5 6-3.2 6-9.5 6-9.5-6-9.5-6Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /><circle cx="12" cy="12" r="2.5" stroke="currentColor" stroke-width="1.7" /></svg>
+            Ver PDF
           </button>
           <button v-if="status === 'closed'" type="button" class="inline-flex min-h-8 cursor-pointer items-center justify-center gap-2 rounded-[7px] border border-[#e6e8ef] bg-white px-[11px] text-[10px] font-semibold text-[#565a6c] transition hover:bg-[#f8f8fb] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b4a8ff] focus-visible:outline-offset-2 max-[520px]:min-h-[30px] max-[520px]:px-2 max-[520px]:text-[9px]" @click="newCashCount">
             Nuevo arqueo
@@ -469,10 +596,12 @@ async function downloadReport() {
               :is-finishing-close="isFinishingClose"
               :error-message="errorMessage"
               :download-error="downloadError"
+              :preview-error="previewError"
               @start-closing="startClosing"
               @finish-closing="finishClosing"
+              @preview-draft="previewDraft"
               @back-to-movements="status = 'open'"
-              @download="downloadReport"
+              @download="previewReport"
             />
           </section>
         </template>
@@ -492,6 +621,13 @@ async function downloadReport() {
         :total-difference="totalDifference"
       />
     </main>
+    <PdfPreview
+      v-if="reportPreviewUrl"
+      :src="reportPreviewUrl"
+      :title="reportPreviewTitle"
+      :filename="reportFilename"
+      @close="closeReportPreview"
+    />
     <div
       v-if="toastMessage"
       class="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-lg border bg-white px-4 py-3 text-sm font-medium shadow-[0_8px_28px_#202a241f] max-[520px]:bottom-3 max-[520px]:right-3"
